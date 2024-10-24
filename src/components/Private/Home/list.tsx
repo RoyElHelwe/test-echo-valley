@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import axios from "axios";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 interface Product {
   id: string;
@@ -9,6 +10,11 @@ interface Product {
   description: string;
   price: number;
   createdAt: string;
+}
+interface History {
+  userId: string;
+  searchTerm: string;
+  timestamp: string;
 }
 
 const ProductPage = () => {
@@ -18,7 +24,43 @@ const ProductPage = () => {
   const [hasMore, setHasMore] = useState<boolean>(true);
   const observer = useRef<IntersectionObserver | null>(null);
   const productIds = useRef<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [history, setHistory] = useState<string[]>([]);
+  const [hasSearched, setHasSearched] = useState<boolean>(false);
+  
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const response = await axios.get("/api/history");
+        setHistory(response.data.map((h: History) => h.searchTerm));
+      } catch (err) {
+        console.error("Error fetching history:", err);
+      }
+    };
 
+    fetchHistory();
+  }, []);
+
+  const handleSearch = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (searchTerm && searchTerm.length > 0) {
+      try {
+        const response = await axios.post("/api/search", { searchTerm });
+        setProducts(response.data.products);
+        setHasSearched(true);
+        setHistory((prevHistory) =>
+          prevHistory.includes(searchTerm)
+            ? prevHistory
+            : [...prevHistory, searchTerm]
+        );
+      } catch (err) {
+        console.error("Error searching products:", err);
+      }
+    } else {
+      setHasSearched(false);
+      setPage(1);
+    }
+  };
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -50,8 +92,10 @@ const ProductPage = () => {
   }, [page]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [page, fetchProducts]);
+    if (!hasSearched) {
+      fetchProducts();
+    }
+  }, [page, fetchProducts, hasSearched]);
 
   // Infinite scroll observer
   const lastProductRef = useCallback(
@@ -73,6 +117,22 @@ const ProductPage = () => {
   return (
     <div>
       <h1>Product List</h1>
+      <form onSubmit={handleSearch}>
+        <Input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          list="history-suggestions"
+          placeholder="Search for a product..."
+        />
+        <button type="submit">Search</button>
+
+        <datalist id="history-suggestions">
+          {history.map((item, index) => (
+            <option key={index} value={item} />
+          ))}
+        </datalist>
+      </form>
       {products.length === 0 && !loading ? (
         <p>No products available.</p>
       ) : (
@@ -80,7 +140,11 @@ const ProductPage = () => {
           {products.map((product, index) => {
             if (products.length === index + 1) {
               return (
-                <Card ref={lastProductRef} key={product.id} className="w-[200px]">
+                <Card
+                  ref={lastProductRef}
+                  key={product.id}
+                  className="w-[200px]"
+                >
                   <CardHeader>{product.name}</CardHeader>
                   <CardContent>
                     <p>{product.description}</p>
