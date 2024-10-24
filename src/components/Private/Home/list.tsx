@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import axios from "axios";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface Product {
   id: string;
@@ -27,7 +28,7 @@ const ProductPage = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [history, setHistory] = useState<string[]>([]);
   const [hasSearched, setHasSearched] = useState<boolean>(false);
-  
+
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -115,18 +116,19 @@ const ProductPage = () => {
   );
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       <h1>Product List</h1>
       <form onSubmit={handleSearch}>
-        <Input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          list="history-suggestions"
-          placeholder="Search for a product..."
-        />
-        <button type="submit">Search</button>
-
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            list="history-suggestions"
+            placeholder="Search for a product..."
+          />
+          <Button type="submit">Search</Button>
+        </div>
         <datalist id="history-suggestions">
           {history.map((item, index) => (
             <option key={index} value={item} />
